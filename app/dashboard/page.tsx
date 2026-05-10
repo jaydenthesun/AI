@@ -1,21 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Rocket, Radar, Flame, Target, BookOpenCheck, Gauge, MessageSquareText, ListChecks } from "lucide-react";
+import {
+  Rocket,
+  Radar,
+  Flame,
+  Target,
+  BookOpenCheck,
+  Gauge,
+  MessageSquareText,
+  ListChecks,
+  Brain,
+  Orbit,
+} from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { ProgressRings } from "@/components/dashboard/ProgressRings";
 import { WeeklyTrend } from "@/components/dashboard/WeeklyTrend";
 import { useLocalCourse } from "@/lib/hooks/useLocalCourse";
 import { adaptLearningPath } from "@/lib/feedbackLoop";
+import { inferLearnerNarratives } from "@/lib/learnerNarrative";
 import { mockAdaptiveRecommendations } from "@/lib/mockAI";
+import { loadPerformance, savePerformance } from "@/lib/storage";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { profile, course, perf, ready } = useLocalCourse();
+  const { profile, course, overlay, perf, ready } = useLocalCourse();
+
+  const narratives = useMemo(() => {
+    if (!profile || !course) return [];
+    return inferLearnerNarratives(profile, perf, course);
+  }, [profile, perf, course]);
+
+  function deferStretchProbe() {
+    const p = loadPerformance();
+    const z = p.behaviorSignals ?? {
+      optionalChallengeSkips: 0,
+      lessonSectionQuickCollapseCount: 0,
+      quizTotalSeconds: 0,
+      quizSessionsCompleted: 0,
+      quizQuickGuessCount: 0,
+      lessonBeatsCompleted: 0,
+    };
+    savePerformance({
+      ...p,
+      behaviorSignals: { ...z, optionalChallengeSkips: z.optionalChallengeSkips + 1 },
+    });
+  }
 
   useEffect(() => {
     if (!ready) return;
@@ -106,6 +140,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {overlay?.injectedLessons?.length && overlay.lastMutationSummary ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl border border-cyan-400/35 bg-gradient-to-r from-cyan-500/15 via-transparent to-violet-500/15 px-6 py-5"
+        >
+          <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em] text-cyan-200/90">
+            <Orbit className="h-4 w-4" /> Path recomputed · revision {overlay.planRevision}
+          </div>
+          <p className="mt-3 text-sm text-zinc-100">{overlay.lastMutationSummary}</p>
+          <p className="mt-2 text-xs text-zinc-500">
+            New remediation nodes appear first in your lesson fabric — Clōd + routing mesh simulated locally.
+          </p>
+        </motion.div>
+      ) : null}
+
       <div className="grid gap-6 md:grid-cols-3">
         <GlassCard>
           <div className="flex items-center justify-between">
@@ -133,6 +183,29 @@ export default function DashboardPage() {
           </Link>
         </GlassCard>
       </div>
+
+      {course.optionalChallengeLessonIds?.length ? (
+        <GlassCard>
+          <div className="text-sm font-semibold text-white">Optional stretch orbit</div>
+          <p className="mt-2 text-xs text-zinc-500">
+            High weekly bandwidth unlocks adversarial extensions — deferrals tune how aggressively we push difficulty.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {course.optionalChallengeLessonIds.map((lid) => (
+              <Link
+                key={lid}
+                href={`/lesson/${lid}`}
+                className="rounded-full border border-white/10 bg-black/40 px-4 py-2 text-xs text-cyan-100 hover:border-cyan-400/40"
+              >
+                Open {lid}
+              </Link>
+            ))}
+          </div>
+          <GlowButton variant="ghost" className="mt-4 w-full text-xs" onClick={deferStretchProbe}>
+            Defer stretch probes (log preference)
+          </GlowButton>
+        </GlassCard>
+      ) : null}
 
       <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <GlassCard>
@@ -173,6 +246,20 @@ export default function DashboardPage() {
             </p>
           </GlassCard>
 
+          <GlassCard delay={0.07}>
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Brain className="h-5 w-5 text-violet-200" /> Intelligence reads
+            </div>
+            <ul className="mt-4 space-y-4">
+              {narratives.map((n) => (
+                <li key={n.headline} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm">
+                  <div className="font-semibold text-white">{n.headline}</div>
+                  <p className="mt-2 text-xs leading-relaxed text-zinc-400">{n.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </GlassCard>
+
           <GlassCard delay={0.1}>
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-white">Weak vs strong spectra</div>
@@ -184,7 +271,16 @@ export default function DashboardPage() {
                 <div className="mt-3 space-y-2 text-sm text-zinc-300">
                   {(perf.weakTopics.length ? perf.weakTopics : ["Async nuance", "Proof tactics"]).slice(0, 3).map((t) => (
                     <div key={t} className="rounded-2xl border border-rose-500/20 bg-rose-500/5 px-3 py-2">
-                      {t}
+                      <div>{t}</div>
+                      {perf.weakTopicFacets?.[t]?.length ? (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {perf.weakTopicFacets[t].map((f) => (
+                            <span key={f} className="rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-rose-100/80">
+                              {f.replaceAll("_", " ")}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

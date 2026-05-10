@@ -8,14 +8,22 @@ import { CheckCircle2 } from "lucide-react";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { CodeEditor } from "@/components/code/CodeEditor";
-import { appendFeedbackEntry, loadCoursePlan, loadPerformance, savePerformance } from "@/lib/storage";
+import { enrichAssignmentCopy } from "@/lib/personalization";
+import {
+  appendFeedbackEntry,
+  bumpStreak,
+  loadDisplayCoursePlan,
+  loadPerformance,
+  loadProfile,
+  savePerformance,
+  syncAdaptivePlanFromPerformance,
+} from "@/lib/storage";
 import { mergeTopicSignals } from "@/lib/feedbackLoop";
-import { bumpStreak } from "@/lib/storage";
 
 export default function AssignmentPage() {
   const params = useParams<{ assignmentId: string }>();
   const id = params.assignmentId;
-  const course = typeof window !== "undefined" ? loadCoursePlan() : null;
+  const course = typeof window !== "undefined" ? loadDisplayCoursePlan() : null;
   const assignment = useMemo(() => {
     const a = course?.assignments.find((x) => x.id === id);
     return (
@@ -34,6 +42,13 @@ export default function AssignmentPage() {
     const lesson = course?.lessons.find((l) => l.id === assignment.lessonRef);
     return lesson?.topic ?? "Foundations";
   }, [assignment.lessonRef, course?.lessons]);
+
+  const presented = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const profile = loadProfile();
+    if (!profile) return null;
+    return enrichAssignmentCopy(assignment, profile, loadPerformance(), topic);
+  }, [assignment, topic]);
 
   const [code, setCode] = useState(`// ${assignment.title}\nexport function deliverable(input: unknown) {\n  return { ok: true, echo: input };\n}\n`);
   const [reflection, setReflection] = useState("");
@@ -61,6 +76,7 @@ export default function AssignmentPage() {
       completedAssignmentIds: Array.from(new Set([...perf2.completedAssignmentIds, assignment.id])),
     };
     savePerformance(next);
+    syncAdaptivePlanFromPerformance();
     setSubmitted(true);
   }
 
@@ -69,8 +85,14 @@ export default function AssignmentPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-[0.3em] text-cyan-200/70">Assignment lattice</div>
-          <h1 className="mt-2 font-display text-4xl text-white">{assignment.title}</h1>
-          <p className="mt-3 max-w-2xl text-zinc-400">{assignment.description}</p>
+          <h1 className="mt-2 font-display text-4xl text-white">{presented?.title ?? assignment.title}</h1>
+          <p className="mt-3 max-w-2xl text-zinc-400">{presented?.description ?? assignment.description}</p>
+          {presented?.scenarioHook ? (
+            <p className="mt-3 max-w-2xl rounded-2xl border border-cyan-400/25 bg-cyan-400/5 px-4 py-3 text-sm text-cyan-50">
+              <span className="text-xs uppercase tracking-[0.25em] text-cyan-200/80">Scenario hook · </span>
+              {presented.scenarioHook}
+            </p>
+          ) : null}
           <div className="mt-4 text-xs text-zinc-500">
             Mirrors lesson <span className="text-white">{assignment.lessonRef}</span> • Estimated {assignment.estimatedMinutes}{" "}
             minutes
