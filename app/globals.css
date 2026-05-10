@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+@layer utilities {
+  .glass {
+    @apply border border-white/10 bg-white/5 shadow-[0_0_120px_-40px_rgba(94,234,212,0.45)] backdrop-blur-xl;
+  }
+
+  .glass-strong {
+    @apply border border-white/15 bg-gradient-to-br from-white/15 to-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-2xl;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 24px rgba(94, 234, 212, 0.35), 0 0 52px rgba(129, 140, 248, 0.35);
+  }
+
+  .grid-bg {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(120deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+    background-size: 28px 28px, 100% 100%;
+  }
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-floaty {
+  animation: floaty 8s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 6s ease-in-out infinite;
+}
