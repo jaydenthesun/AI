@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type {
+  AttentionSpan,
   CodingLevel,
   InterestArea,
   LearningStyle,
   MotivationStyle,
+  PreferredLanguage,
   ProjectStyle,
 } from "@/data/types";
 import { generateCoursePlan } from "@/lib/courseGenerator";
@@ -18,11 +20,27 @@ import { cn } from "@/lib/cn";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 const STEPS = [
-  "Level & Confidence",
+  "Level & Language",
   "Learning DNA",
   "Interests & Time",
   "Goals & Closing",
 ];
+
+const LANGUAGE_OPTIONS: { id: PreferredLanguage; label: string }[] = [
+  { id: "python", label: "Python" },
+  { id: "typescript", label: "TypeScript" },
+  { id: "javascript", label: "JavaScript" },
+  { id: "java", label: "Java" },
+  { id: "go", label: "Go" },
+  { id: "rust", label: "Rust" },
+  { id: "cpp", label: "C++" },
+];
+
+const ATTENTION_LABEL: Record<AttentionSpan, string> = {
+  short_bursts: "Short bursts (≤25 min)",
+  medium_sessions: "Medium sessions (~45 min)",
+  deep_focus: "Deep focus blocks (90+ min)",
+};
 
 const LEARNING_LABEL: Record<LearningStyle, string> = {
   visual: "Visual",
@@ -38,7 +56,9 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [codingLevel, setCodingLevel] = useState<CodingLevel>("beginner");
   const [confidence, setConfidence] = useState(6);
+  const [preferredLanguage, setPreferredLanguage] = useState<PreferredLanguage>("python");
   const [learningStyles, setLearningStyles] = useState<LearningStyle[]>(["visual", "project_based"]);
+  const [attentionSpan, setAttentionSpan] = useState<AttentionSpan>("medium_sessions");
   const [motivationStyle, setMotivationStyle] = useState<MotivationStyle>("milestones");
   const [weeklyHours, setWeeklyHours] = useState(6);
   const [interests, setInterests] = useState<InterestArea[]>(["ai", "websites"]);
@@ -72,6 +92,8 @@ export default function OnboardingPage() {
       projectStyle,
       confidence,
       motivationStyle,
+      preferredLanguage,
+      attentionSpan,
     };
     saveOnboardingProfile(answers);
     const plan = generateCoursePlan(answers);
@@ -115,8 +137,8 @@ export default function OnboardingPage() {
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              <h2 className="font-display text-2xl text-white">Coding level & confidence pulse</h2>
-              <p className="mt-3 text-sm text-zinc-400">We baseline difficulty curves and scaffolding density.</p>
+              <h2 className="font-display text-2xl text-white">Coding level, language & confidence</h2>
+              <p className="mt-3 text-sm text-zinc-400">We baseline difficulty, primary syntax lane, and scaffolding density.</p>
               <div className="mt-8 grid gap-6 md:grid-cols-3">
                 {(["beginner", "intermediate", "advanced"] as const).map((lvl) => (
                   <button
@@ -140,6 +162,28 @@ export default function OnboardingPage() {
                   </button>
                 ))}
               </div>
+              <div className="mt-10">
+                <div className="text-sm font-semibold text-white">Primary language track</div>
+                <p className="mt-2 text-xs text-zinc-500">Examples, assignments, and Greptile-style reviews bias toward this stack.</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {LANGUAGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setPreferredLanguage(opt.id)}
+                      className={cn(
+                        "rounded-full px-4 py-2 text-sm transition",
+                        preferredLanguage === opt.id
+                          ? "bg-gradient-to-r from-cyan-400/80 to-violet-500/90 text-black"
+                          : "border border-white/10 bg-black/40 text-zinc-200 hover:border-white/25",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-10">
                 <div className="flex justify-between text-sm text-zinc-400">
                   <span>Confidence (1–10)</span>
@@ -183,6 +227,28 @@ export default function OnboardingPage() {
                   );
                 })}
               </div>
+              <div className="mt-10">
+                <div className="text-sm font-semibold text-white">Attention & motivation rhythm</div>
+                <p className="mt-2 text-xs text-zinc-500">Shapes lesson chunk sizes and break prompts for your MVP path.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {( ["short_bursts", "medium_sessions", "deep_focus"] as const ).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setAttentionSpan(a)}
+                      className={cn(
+                        "rounded-2xl border px-3 py-3 text-left text-xs transition sm:text-sm",
+                        attentionSpan === a
+                          ? "border-cyan-300/70 bg-cyan-400/10 text-white"
+                          : "border-white/10 bg-black/40 text-zinc-300 hover:border-white/20",
+                      )}
+                    >
+                      {ATTENTION_LABEL[a]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-10">
                 <div className="text-sm font-semibold text-white">Motivation vector</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">

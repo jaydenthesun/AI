@@ -10,7 +10,9 @@ const links = [
   { href: "/", label: "Product" },
   { href: "/onboarding", label: "Onboarding" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/course-path", label: "Course path" },
   { href: "/code-review", label: "Code Review" },
+  { href: "/model-routing", label: "Routing" },
   { href: "/teacher", label: "Teacher" },
 ];
 

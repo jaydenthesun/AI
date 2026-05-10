@@ -180,11 +180,20 @@ export function generateCoursePlan(answers: OnboardingAnswers): CoursePlan {
     }),
   );
 
-  const subtitle = `${answers.codingLevel} track • ${answers.weeklyHours}h/week • calibrated for ${accent.replaceAll("_", " ")} learners`;
+  const lang = answers.preferredLanguage ?? "python";
+  const attn = answers.attentionSpan ?? "medium_sessions";
+  const langLabel = lang.replaceAll("_", " ").toUpperCase();
+  const pace =
+    attn === "short_bursts"
+      ? "micro-session pacing"
+      : attn === "deep_focus"
+        ? "deep-focus blocks"
+        : "balanced sessions";
+  const subtitle = `${langLabel} • ${answers.codingLevel} track • ${answers.weeklyHours}h/week • ${pace} • ${accent.replaceAll("_", " ")} modality`;
 
   return {
     id: crypto.randomUUID(),
-    title: "CodePath Agent — Personalized CS Trajectory",
+    title: `${langLabel} orbit — Personalized CS trajectory`,
     subtitle,
     generatedAt: new Date().toISOString(),
     learningStyleAccent: accent,

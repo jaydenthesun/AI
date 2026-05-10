@@ -74,3 +74,27 @@ export const mockRecentSubmissions = [
   { student: "Mei Rodriguez", title: "Buffer overflow sandbox", score: 95 },
   { student: "Jon Patel", title: "REST client refactor", score: 72 },
 ];
+
+export const mockGeneratedAssignments = [
+  {
+    id: "gen-1",
+    title: "Concurrency trace lab",
+    summary: "AI-drafted for async weak spots · Greptile-ready rubric",
+    targetTopics: ["Async / concurrency"],
+    status: "pending_approval" as const,
+  },
+  {
+    id: "gen-2",
+    title: "Recursion visual workbook",
+    summary: "Diagram-first remediation after cohort retries ≥2",
+    targetTopics: ["Recursion intuition"],
+    status: "approved" as const,
+  },
+  {
+    id: "gen-3",
+    title: "Game-loop state machine",
+    summary: "Challenge modality for project-based learners",
+    targetTopics: ["Gameplay loops"],
+    status: "draft" as const,
+  },
+];

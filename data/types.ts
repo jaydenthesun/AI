@@ -30,6 +30,18 @@ export type MotivationStyle =
   | "milestones"
   | "intrinsic_curiosity";
 
+export type PreferredLanguage =
+  | "python"
+  | "typescript"
+  | "javascript"
+  | "java"
+  | "go"
+  | "rust"
+  | "cpp";
+
+/** Preferred session shape — informs pacing copy and lesson density hints. */
+export type AttentionSpan = "short_bursts" | "medium_sessions" | "deep_focus";
+
 export interface OnboardingAnswers {
   codingLevel: CodingLevel;
   learningStyles: LearningStyle[];
@@ -39,6 +51,9 @@ export interface OnboardingAnswers {
   projectStyle: ProjectStyle;
   confidence: number; /* 1-10 */
   motivationStyle: MotivationStyle;
+  /** Set during onboarding; optional for legacy stored profiles. */
+  preferredLanguage?: PreferredLanguage;
+  attentionSpan?: AttentionSpan;
 }
 
 export interface StudentProfile extends OnboardingAnswers {
@@ -130,6 +145,25 @@ export interface CoursePlan {
   estimatedWeeks: number;
 }
 
+export type FeedbackKind = "assignment" | "quiz" | "code_review";
+
+export interface FeedbackEntry {
+  id: string;
+  at: string;
+  kind: FeedbackKind;
+  title: string;
+  summary: string;
+  score?: number;
+}
+
+export interface CodeSubmissionEntry {
+  id: string;
+  at: string;
+  language: string;
+  score: number;
+  excerpt: string;
+}
+
 export interface PerformanceSnapshot {
   assignmentScores: Record<string, number>;
   quizScores: Record<string, number>;
@@ -144,6 +178,8 @@ export interface PerformanceSnapshot {
   completedQuizIds: string[];
   streakDays: number;
   lastActiveDate: string;
+  recentFeedback: FeedbackEntry[];
+  codeSubmissions: CodeSubmissionEntry[];
 }
 
 export interface AdaptationDirective {
@@ -161,14 +197,25 @@ export interface RouteDecision {
   reason: string;
 }
 
+/** Subscores 0–100; overall score uses PRD weights: 40/20/20/20. */
+export interface CodeReviewCategoryScores {
+  correctness: number;
+  readability: number;
+  efficiency: number;
+  problemSolving: number;
+}
+
 export interface CodeReviewResult {
   score: number;
+  categoryScores: CodeReviewCategoryScores;
   correctness: string;
   readability: string;
   bugs: string[];
   improvements: string[];
   improvedCode: string;
   efficiency: string;
+  problemSolving: string;
   nextLessonId: string;
+  relatedLessonRecommendation: string;
   practiceRecommendations: string[];
 }

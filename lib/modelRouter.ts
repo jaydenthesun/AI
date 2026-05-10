@@ -69,6 +69,26 @@ export function routeTask(
   };
 }
 
+/** Rows for the model-routing demo — maps PRD task classes to simulated router decisions. */
+export const ROUTING_DEMO_MATRIX: Array<{
+  taskLabel: string;
+  purpose: RoutingPurpose;
+  complexity: 0 | 1 | 2 | 3;
+}> = [
+  { taskLabel: "Basic explanations", purpose: "basic_explanation", complexity: 1 },
+  { taskLabel: "Simple quizzes", purpose: "quiz_grading", complexity: 1 },
+  { taskLabel: "Small feedback snippets", purpose: "simple_feedback", complexity: 1 },
+  { taskLabel: "Lesson generation", purpose: "lesson_generation", complexity: 2 },
+  { taskLabel: "Assignment generation", purpose: "assignment_generation", complexity: 2 },
+  { taskLabel: "Personalized course creation", purpose: "personalization", complexity: 2 },
+  { taskLabel: "Code marking / diff review", purpose: "deep_reasoning", complexity: 3 },
+  { taskLabel: "Large project feedback", purpose: "project_review", complexity: 3 },
+  { taskLabel: "Course redesign", purpose: "course_redesign", complexity: 3 },
+  { taskLabel: "Diagrams & visual briefs", purpose: "diagram", complexity: 2 },
+  { taskLabel: "Image synthesis", purpose: "image", complexity: 2 },
+  { taskLabel: "Video / narration scripts", purpose: "video_script", complexity: 2 },
+];
+
 export function describeArchitectureFlow(): {
   flows: Array<{ from: string; to: string; label: string; tier: ModelTier }>;
   nodes: Array<{ id: string; label: string; role: string }>;

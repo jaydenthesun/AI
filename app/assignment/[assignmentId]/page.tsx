@@ -8,7 +8,7 @@ import { CheckCircle2 } from "lucide-react";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { CodeEditor } from "@/components/code/CodeEditor";
-import { loadCoursePlan, loadPerformance, savePerformance } from "@/lib/storage";
+import { appendFeedbackEntry, loadCoursePlan, loadPerformance, savePerformance } from "@/lib/storage";
 import { mergeTopicSignals } from "@/lib/feedbackLoop";
 import { bumpStreak } from "@/lib/storage";
 
@@ -46,13 +46,19 @@ export default function AssignmentPage() {
     );
     const perf0 = bumpStreak(loadPerformance());
     const perf1 = mergeTopicSignals(perf0, topic, heuristic);
+    const perf2 = appendFeedbackEntry(perf1, {
+      kind: "assignment",
+      title: assignment.title,
+      summary: `Heuristic score ${heuristic}/100 • topic “${topic}” merged into adaptive spectra`,
+      score: heuristic,
+    });
     const next = {
-      ...perf1,
+      ...perf2,
       assignmentScores: {
-        ...perf1.assignmentScores,
+        ...perf2.assignmentScores,
         [assignment.id]: heuristic,
       },
-      completedAssignmentIds: Array.from(new Set([...perf1.completedAssignmentIds, assignment.id])),
+      completedAssignmentIds: Array.from(new Set([...perf2.completedAssignmentIds, assignment.id])),
     };
     savePerformance(next);
     setSubmitted(true);

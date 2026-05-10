@@ -17,6 +17,7 @@ import { GlowButton } from "@/components/ui/GlowButton";
 import { WeeklyTrend } from "@/components/dashboard/WeeklyTrend";
 import { mockTutorReply } from "@/lib/mockAI";
 import { routeTask } from "@/lib/modelRouter";
+import { shouldOfferVisualHint } from "@/lib/feedbackLoop";
 import {
   bumpStreak,
   loadCoursePlan,
@@ -65,6 +66,12 @@ export default function LessonPage() {
     const found = course?.lessons.find((l) => l.id === slug);
     return found ?? FallbackLesson(slug);
   }, [course?.lessons, slug]);
+
+  const suggestVisual = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const perf = loadPerformance();
+    return shouldOfferVisualHint(perf, lesson.id, profile?.learningStyles ?? []);
+  }, [lesson.id, profile?.learningStyles]);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(lesson.sections.map((s, i) => [s.id, i === 0])),
@@ -136,6 +143,13 @@ export default function LessonPage() {
             Estimated {lesson.estimatedMinutes} minutes • {lesson.topic} • Accent modal:{" "}
             {(course?.learningStyleAccent ?? profile?.learningStyles?.[0] ?? "multi").replaceAll("_", " ")}
           </p>
+          {suggestVisual ? (
+            <div className="mt-4 rounded-2xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
+              You&apos;ve accumulated dwell time on this topic — the adaptive loop recommends a{" "}
+              <span className="font-semibold text-white">visual explanation</span> next. Expand diagram sections or ask the tutor for
+              a sketch brief.
+            </div>
+          ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
             <GlowButton variant="ghost" className="gap-2 text-xs uppercase tracking-[0.2em]" onClick={() => setTimer((t) => t + 10)}>
               <Timer className="h-4 w-4" /> +10 focus minutes

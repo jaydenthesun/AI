@@ -21,6 +21,7 @@ export function adaptLearningPath(
   const meanScore = avg(recentScores) || 72;
   const weak = perf.weakTopics;
   const strong = perf.strongTopics;
+  const repeatedStruggle = Object.entries(perf.retryCountByTopic).find(([, n]) => n >= 2);
 
   const prefersVisual = learner.learningStyles.includes("visual");
   const prefersProject = learner.learningStyles.includes("project_based");
@@ -33,7 +34,12 @@ export function adaptLearningPath(
     suggestedResourceTypes: [],
   };
 
-  if (meanScore < 70 || weak.length > strong.length) {
+  if (repeatedStruggle) {
+    directives.summary = `Repeated friction on “${repeatedStruggle[0]}” — scheduling an easier recap layer before new material.`;
+    directives.nextLessonModifiers.push("Insert spaced-review beats and micro-quizzes on the struggling topic");
+    directives.suggestedResourceTypes.push("review");
+    if (prefersVisual) directives.suggestedResourceTypes.push("visual");
+  } else if (meanScore < 70 || weak.length > strong.length) {
     directives.summary =
       "Performance signals struggle — injecting review primers and lower cognitive load checkpoints.";
     directives.nextLessonModifiers.push("Add worked examples with line-by-line narration");
@@ -86,6 +92,19 @@ export function mergeTopicSignals(
     [topic]: score / 100,
   };
   return next;
+}
+
+/** Tracks quiz attempts; increments retries when mastery signal is low (PRD-style loop failures). */
+export function recordQuizAttempt(
+  perf: PerformanceSnapshot,
+  topic: string,
+  scorePct: number,
+): PerformanceSnapshot {
+  const retryCountByTopic = { ...perf.retryCountByTopic };
+  if (scorePct < 75) {
+    retryCountByTopic[topic] = (retryCountByTopic[topic] ?? 0) + 1;
+  }
+  return mergeTopicSignals({ ...perf, retryCountByTopic }, topic, scorePct);
 }
 
 export function recordTime(

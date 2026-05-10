@@ -12,7 +12,8 @@ import {
   loadPerformance,
   savePerformance,
 } from "@/lib/storage";
-import { mergeTopicSignals } from "@/lib/feedbackLoop";
+import { recordQuizAttempt } from "@/lib/feedbackLoop";
+import { appendFeedbackEntry } from "@/lib/storage";
 import { cn } from "@/lib/cn";
 
 export default function QuizPage() {
@@ -71,11 +72,17 @@ export default function QuizPage() {
     });
     const pct = quiz.questions.length ? Math.round((correct / quiz.questions.length) * 100) : 0;
     const perf0 = bumpStreak(loadPerformance());
-    const perf1 = mergeTopicSignals(perf0, topic, pct);
+    const perf1 = recordQuizAttempt(perf0, topic, pct);
+    const perf2 = appendFeedbackEntry(perf1, {
+      kind: "quiz",
+      title: quiz.title,
+      summary: `Score ${pct}% • retries on weak topics increment when below mastery threshold`,
+      score: pct,
+    });
     savePerformance({
-      ...perf1,
-      quizScores: { ...perf1.quizScores, [quiz.id]: pct },
-      completedQuizIds: Array.from(new Set([...perf1.completedQuizIds, quiz.id])),
+      ...perf2,
+      quizScores: { ...perf2.quizScores, [quiz.id]: pct },
+      completedQuizIds: Array.from(new Set([...perf2.completedQuizIds, quiz.id])),
     });
   }
 

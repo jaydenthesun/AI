@@ -8,6 +8,7 @@ import { GlowButton } from "@/components/ui/GlowButton";
 import {
   mockClassStudents,
   mockClassWeakAreas,
+  mockGeneratedAssignments,
   mockInterventions,
   mockRecentSubmissions,
 } from "@/data/mockTeacherData";
@@ -83,6 +84,15 @@ export default function TeacherPage() {
                   <div className="rounded-2xl border border-rose-400/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-100">
                     Weak focus: {s.weakArea}
                   </div>
+                  {s.snapshot.weakTopics?.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {s.snapshot.weakTopics.map((t) => (
+                        <span key={t} className="rounded-full border border-white/10 bg-black/50 px-2 py-1 text-[10px] text-zinc-400">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </motion.div>
             ))}
@@ -136,6 +146,39 @@ export default function TeacherPage() {
                 </li>
               ))}
             </ul>
+          </GlassCard>
+
+          <GlassCard delay={0.12}>
+            <div className="text-sm font-semibold text-white">Generated assignments (mock approvals)</div>
+            <p className="mt-2 text-xs text-zinc-500">Simulates Claude-authored drafts awaiting mentor sign-off.</p>
+            <div className="mt-5 space-y-4">
+              {mockGeneratedAssignments.map((g) => (
+                <div key={g.id} className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold text-white">{g.title}</div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                        g.status === "approved"
+                          ? "border border-emerald-400/40 bg-emerald-400/15 text-emerald-100"
+                          : g.status === "pending_approval"
+                            ? "border border-amber-400/40 bg-amber-400/10 text-amber-50"
+                            : "border border-white/15 bg-white/5 text-zinc-300"
+                      }`}
+                    >
+                      {g.status.replaceAll("_", " ")}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-zinc-400">{g.summary}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {g.targetTopics.map((t) => (
+                      <span key={t} className="rounded-full bg-white/5 px-2 py-1 text-[11px] text-zinc-400">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </GlassCard>
         </div>
       </div>

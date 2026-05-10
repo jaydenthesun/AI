@@ -182,6 +182,12 @@ export default function HomePage() {
             <Link href="/lesson/lesson-1">
               <GlowButton variant="ghost">Open sample lesson</GlowButton>
             </Link>
+            <Link href="/course-path">
+              <GlowButton variant="ghost">Course path</GlowButton>
+            </Link>
+            <Link href="/model-routing">
+              <GlowButton variant="ghost">Routing demo</GlowButton>
+            </Link>
             <Link href="/code-review">
               <GlowButton>Try code review</GlowButton>
             </Link>

@@ -10,6 +10,13 @@ import { mockCodeReview } from "@/lib/mockAI";
 import { routeTask } from "@/lib/modelRouter";
 import type { CodeReviewResult } from "@/data/types";
 import Link from "next/link";
+import {
+  appendFeedbackEntry,
+  bumpStreak,
+  loadCoursePlan,
+  loadPerformance,
+  savePerformance,
+} from "@/lib/storage";
 
 export default function CodeReviewPage() {
   const [language, setLanguage] = useState("typescript");
@@ -22,7 +29,31 @@ export default function CodeReviewPage() {
   function runReview() {
     setLoading(true);
     setTimeout(() => {
-      setResult(mockCodeReview(code, language));
+      const perf0 = bumpStreak(loadPerformance());
+      const course = loadCoursePlan();
+      const review = mockCodeReview(code, language, {
+        lessons: course?.lessons,
+        weakTopics: perf0.weakTopics,
+      });
+      setResult(review);
+
+      const excerpt = code.trim().slice(0, 140).replace(/\s+/g, " ").trim();
+      const submissionId =
+        typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `sub-${Date.now()}`;
+      let next = appendFeedbackEntry(perf0, {
+        kind: "code_review",
+        title: "Greptile-style structural review",
+        summary: `${review.relatedLessonRecommendation} • weighted 40/20/20/20 rubric`,
+        score: review.score,
+      });
+      next = {
+        ...next,
+        codeSubmissions: [
+          { id: submissionId, at: new Date().toISOString(), language, score: review.score, excerpt: excerpt || "(empty)" },
+          ...next.codeSubmissions,
+        ].slice(0, 24),
+      };
+      savePerformance(next);
       setLoading(false);
     }, 900);
   }
@@ -105,10 +136,35 @@ export default function CodeReviewPage() {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <GlassCard>
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <Zap className="h-4 w-4 text-amber-300" /> Correctness & readability
+                  <Zap className="h-4 w-4 text-amber-300" /> Weighted rubric (PRD)
                 </div>
-                <p className="mt-3 text-sm text-zinc-300">{result.correctness}</p>
-                <p className="mt-3 text-sm text-zinc-300">{result.readability}</p>
+                <p className="mt-2 text-xs text-zinc-500">Correctness 40% · Readability 20% · Efficiency 20% · Problem-solving 20%</p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {(
+                    [
+                      ["Correctness", result.categoryScores.correctness, "40%"],
+                      ["Readability", result.categoryScores.readability, "20%"],
+                      ["Efficiency", result.categoryScores.efficiency, "20%"],
+                      ["Problem-solving", result.categoryScores.problemSolving, "20%"],
+                    ] as const
+                  ).map(([label, val, weight]) => (
+                    <div key={label} className="rounded-2xl border border-white/10 bg-black/45 p-4">
+                      <div className="flex items-center justify-between text-xs text-zinc-500">
+                        <span>{label}</span>
+                        <span>{weight}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="text-2xl font-semibold text-white">{val}</div>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: `${val}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-5 text-sm text-zinc-300">{result.correctness}</p>
+                <p className="mt-2 text-sm text-zinc-300">{result.readability}</p>
+                <p className="mt-3 text-sm text-zinc-300">{result.problemSolving}</p>
               </GlassCard>
 
               <GlassCard delay={0.05}>
@@ -145,6 +201,7 @@ export default function CodeReviewPage() {
 
               <GlassCard delay={0.12}>
                 <div className="text-sm font-semibold text-white">Routing handoff</div>
+                <p className="mt-3 text-sm text-emerald-100/90">{result.relatedLessonRecommendation}</p>
                 <p className="mt-3 text-sm text-zinc-400">
                   Next lesson anchor: <span className="text-white">{result.nextLessonId}</span>
                 </p>

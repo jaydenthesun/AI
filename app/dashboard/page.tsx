@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Rocket, Radar, Flame, Target, BookOpenCheck } from "lucide-react";
+import { Rocket, Radar, Flame, Target, BookOpenCheck, Gauge, MessageSquareText, ListChecks } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { ProgressRings } from "@/components/dashboard/ProgressRings";
@@ -47,6 +47,36 @@ export default function DashboardPage() {
   const currentLesson =
     course.lessons.find((l) => perf.completedLessonIds.includes(l.id) === false)?.id ?? course.lessons[0]?.id ?? "lesson-1";
 
+  const currentMeta = course.lessons.find((l) => l.id === currentLesson);
+  const nextLessonId =
+    course.lessons.find((l, i) => {
+      const idx = course.lessons.findIndex((x) => x.id === currentLesson);
+      return i > idx && !perf.completedLessonIds.includes(l.id);
+    })?.id ??
+    course.lessons.find((l) => !perf.completedLessonIds.includes(l.id))?.id ??
+    currentLesson;
+
+  const assignmentEntries = Object.entries(perf.assignmentScores);
+  const recentScores = [...Object.values(perf.assignmentScores), ...Object.values(perf.quizScores)];
+  const meanScore = recentScores.length
+    ? Math.round(recentScores.reduce((a, b) => a + b, 0) / recentScores.length)
+    : null;
+
+  const overallPct = Math.round(lessonPct * 0.55 + roadmapPct * 0.45);
+
+  const difficultyLabel =
+    profile.codingLevel === "advanced"
+      ? meanScore !== null && meanScore > 85
+        ? "Advanced · pace-up eligible"
+        : "Advanced · calibrated"
+      : profile.codingLevel === "intermediate"
+        ? meanScore !== null && meanScore < 65
+          ? "Intermediate · easing"
+          : "Intermediate · steady"
+        : meanScore !== null && meanScore < 60
+          ? "Beginner · extra scaffolding"
+          : "Beginner · supported";
+
   return (
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-14 sm:px-6 lg:py-16">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -67,10 +97,41 @@ export default function DashboardPage() {
               <BookOpenCheck className="h-4 w-4" /> Resume orbit
             </GlowButton>
           </Link>
+          <Link href="/course-path">
+            <GlowButton variant="ghost">Full course path</GlowButton>
+          </Link>
           <Link href="/code-review">
             <GlowButton variant="ghost">Open Greptile console</GlowButton>
           </Link>
         </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <GlassCard>
+          <div className="flex items-center justify-between">
+            <div className="text-xs uppercase tracking-[0.25em] text-zinc-500">Overall progress</div>
+            <Gauge className="h-5 w-5 text-cyan-300" />
+          </div>
+          <div className="mt-4 text-5xl font-semibold text-white">{overallPct}%</div>
+          <p className="mt-3 text-xs text-zinc-500">Blended weekly roadmap + lesson completion (mock telemetry).</p>
+        </GlassCard>
+        <GlassCard delay={0.04}>
+          <div className="text-xs uppercase tracking-[0.25em] text-zinc-500">Current lesson</div>
+          <div className="mt-4 text-lg font-semibold leading-snug text-white">{currentMeta?.title ?? currentLesson}</div>
+          <p className="mt-2 text-xs text-zinc-500">{done}/{totalLessons} lessons complete</p>
+          <Link href={`/lesson/${currentLesson}`} className="mt-4 inline-block text-xs uppercase tracking-[0.2em] text-cyan-200 hover:text-white">
+            Open lesson →
+          </Link>
+        </GlassCard>
+        <GlassCard delay={0.08}>
+          <div className="text-xs uppercase tracking-[0.25em] text-zinc-500">Recommended next</div>
+          <div className="mt-4 text-lg font-semibold text-white">
+            {course.lessons.find((l) => l.id === nextLessonId)?.title ?? "Stay on trajectory"}
+          </div>
+          <Link href={`/lesson/${nextLessonId}`} className="mt-4 inline-block text-xs uppercase tracking-[0.2em] text-fuchsia-200 hover:text-white">
+            Jump ahead →
+          </Link>
+        </GlassCard>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
@@ -79,7 +140,7 @@ export default function DashboardPage() {
             <div>
               <div className="text-xs uppercase tracking-[0.3em] text-zinc-500">Progress synthesis</div>
               <div className="mt-3 text-2xl font-semibold text-white">{course.title}</div>
-              <p className="mt-4 text-sm text-zinc-400">{adaptation.summary}</p>
+              <p className="mt-4 text-sm text-zinc-400">{course.subtitle}</p>
               <div className="mt-6 flex flex-wrap gap-3 text-xs text-cyan-100/80">
                 {adaptation.suggestedResourceTypes.map((t) => (
                   <span key={t} className="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-3 py-1 capitalize">
@@ -153,6 +214,76 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
+          </GlassCard>
+
+          <GlassCard delay={0.18}>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-white">Recent feedback</div>
+              <MessageSquareText className="h-5 w-5 text-cyan-200" />
+            </div>
+            {perf.recentFeedback.length === 0 ? (
+              <p className="mt-4 text-sm text-zinc-500">
+                Complete a quiz, assignment, or code review to populate this feedback rail on your dashboard.
+              </p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {perf.recentFeedback.slice(0, 5).map((f) => (
+                  <div key={f.id} className="rounded-2xl border border-white/8 bg-black/35 px-3 py-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-white">{f.title}</span>
+                      {typeof f.score === "number" ? (
+                        <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-100">
+                          {f.score}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-zinc-400">{f.summary}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+
+          <GlassCard delay={0.22}>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-white">Assignment scores</div>
+              <ListChecks className="h-5 w-5 text-violet-300" />
+            </div>
+            {assignmentEntries.length === 0 ? (
+              <p className="mt-4 text-sm text-zinc-500">Submit an assignment to populate score trails.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {assignmentEntries.slice(0, 6).map(([aid, sc]) => (
+                  <div key={aid} className="flex items-center gap-3">
+                    <div className="flex-1 truncate text-xs text-zinc-400">{aid}</div>
+                    <div className="h-2 w-28 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-violet-400 to-cyan-400" style={{ width: `${sc}%` }} />
+                    </div>
+                    <div className="w-10 text-right text-sm text-white">{sc}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-zinc-400">
+              <span className="text-zinc-500">Difficulty rail · </span>
+              {difficultyLabel}
+              {meanScore !== null ? ` · rolling mean ${meanScore}%` : ""}
+            </div>
+          </GlassCard>
+
+          <GlassCard delay={0.26}>
+            <div className="text-sm font-semibold text-white">AI tutor recommendation</div>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-300">{adaptation.summary}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {adaptation.nextLessonModifiers.slice(0, 4).map((m) => (
+                <span key={m} className="rounded-full border border-fuchsia-400/25 bg-fuchsia-500/10 px-3 py-1 text-[11px] text-fuchsia-50">
+                  {m}
+                </span>
+              ))}
+            </div>
+            <Link href="/model-routing" className="mt-4 inline-block text-xs uppercase tracking-[0.2em] text-cyan-200 hover:text-white">
+              Why this routing →
+            </Link>
           </GlassCard>
         </div>
       </div>

@@ -1,11 +1,24 @@
 "use client";
 
-import type { CoursePlan, OnboardingAnswers, PerformanceSnapshot, StudentProfile } from "@/data/types";
+import type {
+  CoursePlan,
+  FeedbackEntry,
+  OnboardingAnswers,
+  PerformanceSnapshot,
+  StudentProfile,
+} from "@/data/types";
 
 const PROFILE_KEY = "codepath_profile_v1";
 const COURSE_KEY = "codepath_course_v1";
 const PERF_KEY = "codepath_performance_v1";
 const CURRENT_LESSON_KEY = "codepath_current_lesson_v1";
+
+const STORAGE_UPDATE_EVENT = "codepath-storage-update";
+
+export function notifyStorageListeners() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(STORAGE_UPDATE_EVENT));
+}
 
 export const emptyPerformanceSnapshot = (): PerformanceSnapshot => ({
   assignmentScores: {},
@@ -21,6 +34,8 @@ export const emptyPerformanceSnapshot = (): PerformanceSnapshot => ({
   completedQuizIds: [],
   streakDays: 0,
   lastActiveDate: new Date().toISOString(),
+  recentFeedback: [],
+  codeSubmissions: [],
 });
 
 export function saveOnboardingProfile(answers: OnboardingAnswers, name = "Explorer") {
@@ -32,6 +47,7 @@ export function saveOnboardingProfile(answers: OnboardingAnswers, name = "Explor
   };
   if (typeof window === "undefined") return profile;
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  notifyStorageListeners();
   return profile;
 }
 
@@ -49,6 +65,7 @@ export function loadProfile(): StudentProfile | null {
 export function saveCoursePlan(plan: CoursePlan) {
   if (typeof window === "undefined") return;
   localStorage.setItem(COURSE_KEY, JSON.stringify(plan));
+  notifyStorageListeners();
 }
 
 export function loadCoursePlan(): CoursePlan | null {
@@ -65,6 +82,7 @@ export function loadCoursePlan(): CoursePlan | null {
 export function savePerformance(snapshot: PerformanceSnapshot) {
   if (typeof window === "undefined") return;
   localStorage.setItem(PERF_KEY, JSON.stringify(snapshot));
+  notifyStorageListeners();
 }
 
 export function loadPerformance(): PerformanceSnapshot {
@@ -72,10 +90,29 @@ export function loadPerformance(): PerformanceSnapshot {
   const raw = localStorage.getItem(PERF_KEY);
   if (!raw) return emptyPerformanceSnapshot();
   try {
-    return { ...emptyPerformanceSnapshot(), ...(JSON.parse(raw) as PerformanceSnapshot) };
+    const parsed = JSON.parse(raw) as Partial<PerformanceSnapshot>;
+    const base = emptyPerformanceSnapshot();
+    return {
+      ...base,
+      ...parsed,
+      recentFeedback: Array.isArray(parsed.recentFeedback) ? parsed.recentFeedback : [],
+      codeSubmissions: Array.isArray(parsed.codeSubmissions) ? parsed.codeSubmissions : [],
+    };
   } catch {
     return emptyPerformanceSnapshot();
   }
+}
+
+export function appendFeedbackEntry(snapshot: PerformanceSnapshot, entry: Omit<FeedbackEntry, "id" | "at">): PerformanceSnapshot {
+  const row: FeedbackEntry = {
+    ...entry,
+    id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `fb-${Date.now()}`,
+    at: new Date().toISOString(),
+  };
+  return {
+    ...snapshot,
+    recentFeedback: [row, ...snapshot.recentFeedback].slice(0, 24),
+  };
 }
 
 export function setCurrentLessonId(id: string | null) {
