@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -18,15 +18,62 @@ import { WeeklyTrend } from "@/components/dashboard/WeeklyTrend";
 import { mockTutorReply } from "@/lib/mockAI";
 import { routeTask } from "@/lib/modelRouter";
 import { shouldOfferVisualHint } from "@/lib/feedbackLoop";
+import { lessonPreamble } from "@/lib/personalization";
 import {
   bumpStreak,
-  loadCoursePlan,
+  loadDisplayCoursePlan,
   loadPerformance,
   loadProfile,
   savePerformance,
   setCurrentLessonId,
 } from "@/lib/storage";
-import type { Lesson, LessonSection } from "@/data/types";
+import type { Lesson, LessonBeat, LessonSection } from "@/data/types";
+
+function LessonBeatBlock({
+  beat,
+  revealed,
+  onInteract,
+}: {
+  beat: LessonBeat;
+  revealed: boolean;
+  onInteract: () => void;
+}) {
+  if (beat.kind === "checkpoint" || beat.kind === "micro_reflect") {
+    return (
+      <div className="mt-4 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-4 text-sm text-zinc-200">
+        <div className="text-[10px] uppercase tracking-[0.3em] text-fuchsia-200/80">{beat.kind.replaceAll("_", " ")}</div>
+        <p className="mt-2">{beat.prompt}</p>
+        {!revealed ? (
+          <GlowButton variant="ghost" className="mt-3 w-full text-xs" onClick={onInteract}>
+            Log reflection → adaptive engine
+          </GlowButton>
+        ) : (
+          <p className="mt-3 text-xs text-emerald-200">Logged — pacing model updated.</p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-4 rounded-2xl border border-cyan-400/35 bg-cyan-400/10 p-4 text-sm text-zinc-100">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-cyan-200/80">Prediction probe</div>
+      <p className="mt-2">{beat.prompt}</p>
+      <div className="mt-3 grid gap-2">
+        {beat.options?.map((opt, idx) => (
+          <button
+            key={opt}
+            type="button"
+            disabled={revealed}
+            onClick={onInteract}
+            className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-left text-xs hover:border-cyan-400/40 disabled:opacity-60"
+          >
+            {opt}
+            {revealed && beat.correctIndex === idx ? <span className="ml-2 text-emerald-300">· model anchor</span> : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function FallbackLesson(slug: string): Lesson {
   return {
@@ -60,7 +107,7 @@ export default function LessonPage() {
   const params = useParams<{ lessonId: string }>();
   const slug = params.lessonId;
   const profile = typeof window !== "undefined" ? loadProfile() : null;
-  const course = typeof window !== "undefined" ? loadCoursePlan() : null;
+  const course = typeof window !== "undefined" ? loadDisplayCoursePlan() : null;
 
   const lesson = useMemo(() => {
     const found = course?.lessons.find((l) => l.id === slug);
@@ -81,10 +128,45 @@ export default function LessonPage() {
   const [tutorThread, setTutorThread] = useState<Array<{ role: "you" | "agent"; content: string; meta?: string }>>([]);
   const [draft, setDraft] = useState("How should I prioritize practice this week?");
   const [timer, setTimer] = useState(0);
+  const sectionOpenedAt = useRef<Record<string, number>>({});
+  const [beatLogged, setBeatLogged] = useState<Record<string, boolean>>({});
 
   const routingSnippet = routeTask(2, "lesson_generation");
 
+  const preamble = profile ? lessonPreamble(profile, lesson.topic) : null;
+
+  function logBeatCompletion(beatId: string) {
+    if (beatLogged[beatId]) return;
+    setBeatLogged((m) => ({ ...m, [beatId]: true }));
+    const perf = loadPerformance();
+    savePerformance({
+      ...perf,
+      behaviorSignals: {
+        ...perf.behaviorSignals,
+        lessonBeatsCompleted: perf.behaviorSignals.lessonBeatsCompleted + 1,
+      },
+    });
+  }
+
   function toggle(section: LessonSection) {
+    const now = Date.now();
+    const wasOpen = !!openSections[section.id];
+    if (wasOpen) {
+      const openedAt = sectionOpenedAt.current[section.id];
+      if (openedAt && now - openedAt < 2000) {
+        const perf = loadPerformance();
+        savePerformance({
+          ...perf,
+          behaviorSignals: {
+            ...perf.behaviorSignals,
+            lessonSectionQuickCollapseCount: perf.behaviorSignals.lessonSectionQuickCollapseCount + 1,
+          },
+        });
+      }
+      delete sectionOpenedAt.current[section.id];
+    } else {
+      sectionOpenedAt.current[section.id] = now;
+    }
     setOpenSections((s) => ({ ...s, [section.id]: !s[section.id] }));
   }
 
@@ -143,6 +225,12 @@ export default function LessonPage() {
             Estimated {lesson.estimatedMinutes} minutes • {lesson.topic} • Accent modal:{" "}
             {(course?.learningStyleAccent ?? profile?.learningStyles?.[0] ?? "multi").replaceAll("_", " ")}
           </p>
+          {preamble ? (
+            <div className="mt-4 rounded-2xl border border-violet-400/30 bg-violet-500/10 px-4 py-3 text-sm leading-relaxed text-violet-50">
+              <span className="text-[10px] uppercase tracking-[0.35em] text-violet-200/80">Personalized preamble · </span>
+              {preamble}
+            </div>
+          ) : null}
           {suggestVisual ? (
             <div className="mt-4 rounded-2xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
               You&apos;ve accumulated dwell time on this topic — the adaptive loop recommends a{" "}
@@ -212,6 +300,14 @@ export default function LessonPage() {
                           Video scaffold: <span className="text-white">{section.videoPlaceholder}</span>
                         </div>
                       )}
+                      {section.beats?.map((beat) => (
+                        <LessonBeatBlock
+                          key={beat.id}
+                          beat={beat}
+                          revealed={!!beatLogged[beat.id]}
+                          onInteract={() => logBeatCompletion(beat.id)}
+                        />
+                      ))}
                     </motion.div>
                   )}
                 </AnimatePresence>

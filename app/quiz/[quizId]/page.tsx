@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import {
   bumpStreak,
-  loadCoursePlan,
+  loadDisplayCoursePlan,
   loadPerformance,
   savePerformance,
+  syncAdaptivePlanFromPerformance,
 } from "@/lib/storage";
 import { recordQuizAttempt } from "@/lib/feedbackLoop";
 import { appendFeedbackEntry } from "@/lib/storage";
@@ -20,7 +21,7 @@ export default function QuizPage() {
   const params = useParams<{ quizId: string }>();
   const router = useRouter();
   const id = params.quizId;
-  const course = typeof window !== "undefined" ? loadCoursePlan() : null;
+  const course = typeof window !== "undefined" ? loadDisplayCoursePlan() : null;
 
   const quiz = useMemo(() => {
     const q = course?.quizzes.find((x) => x.id === id);
@@ -49,6 +50,10 @@ export default function QuizPage() {
 
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const sessionStartedAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    sessionStartedAtRef.current = Date.now();
+  }, [id]);
 
   const scorePct = useMemo(() => {
     if (!submitted) return 0;
@@ -71,6 +76,11 @@ export default function QuizPage() {
       if (answers[q.id] === q.correctIndex) correct += 1;
     });
     const pct = quiz.questions.length ? Math.round((correct / quiz.questions.length) * 100) : 0;
+    const started = sessionStartedAtRef.current ?? Date.now();
+    const elapsed = Math.max(0, (Date.now() - started) / 1000);
+    const answeredAll = quiz.questions.every((q) => answers[q.id] !== undefined);
+    const quickGuess = answeredAll && elapsed < 5;
+
     const perf0 = bumpStreak(loadPerformance());
     const perf1 = recordQuizAttempt(perf0, topic, pct);
     const perf2 = appendFeedbackEntry(perf1, {
@@ -79,11 +89,19 @@ export default function QuizPage() {
       summary: `Score ${pct}% • retries on weak topics increment when below mastery threshold`,
       score: pct,
     });
-    savePerformance({
+    const perf3 = {
       ...perf2,
       quizScores: { ...perf2.quizScores, [quiz.id]: pct },
       completedQuizIds: Array.from(new Set([...perf2.completedQuizIds, quiz.id])),
-    });
+      behaviorSignals: {
+        ...perf2.behaviorSignals,
+        quizTotalSeconds: perf2.behaviorSignals.quizTotalSeconds + elapsed,
+        quizSessionsCompleted: perf2.behaviorSignals.quizSessionsCompleted + 1,
+        quizQuickGuessCount: perf2.behaviorSignals.quizQuickGuessCount + (quickGuess ? 1 : 0),
+      },
+    };
+    savePerformance(perf3);
+    syncAdaptivePlanFromPerformance();
   }
 
   return (
