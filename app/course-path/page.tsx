@@ -1,17 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BookMarked, CalendarClock, ClipboardCheck, Hammer, Sparkles } from "lucide-react";
+import { BookMarked, CalendarClock, ClipboardCheck, Hammer, Sparkles, Layers } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { useLocalCourse } from "@/lib/hooks/useLocalCourse";
+import { specializedCourses } from "@/data/specializedCourses";
+import { loadPurchasedCourseIds } from "@/lib/purchasedCourses";
+import { getModulesForCourse } from "@/lib/specializedModules";
+import { moduleProgressFraction } from "@/lib/specializedProgress";
 
 export default function CoursePathPage() {
   const router = useRouter();
   const { profile, course, perf, ready } = useLocalCourse();
+  const [purchasedSpecIds, setPurchasedSpecIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setPurchasedSpecIds(loadPurchasedCourseIds());
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -37,6 +46,8 @@ export default function CoursePathPage() {
 
   const difficultyLabel =
     profile.codingLevel === "advanced" ? "Stretch / research-adjacent" : profile.codingLevel === "intermediate" ? "Balanced challenge" : "Foundations-first";
+
+  const ownedSpecialized = specializedCourses.filter((c) => purchasedSpecIds.includes(c.id));
 
   return (
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-14 sm:px-6 lg:py-16">
@@ -190,6 +201,47 @@ export default function CoursePathPage() {
           </div>
         </GlassCard>
       </div>
+
+      {ownedSpecialized.length > 0 ? (
+        <GlassCard className="mt-10 border-violet-400/15 bg-violet-500/[0.04]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-violet-200/80">
+                <Layers className="h-4 w-4" /> Alongside your core path
+              </div>
+              <h2 className="mt-3 font-display text-2xl text-white">Specialized tracks</h2>
+              <p className="mt-3 max-w-2xl text-sm text-zinc-400">
+                Premium lanes with labs and checkpoints — open any track to continue where you left off.
+              </p>
+            </div>
+            <Link href="/courses" className="text-xs uppercase tracking-[0.2em] text-cyan-200 hover:text-white">
+              Browse store →
+            </Link>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {ownedSpecialized.map((spec) => {
+              const modules = getModulesForCourse(spec);
+              const pct = moduleProgressFraction(spec.id, modules.length);
+              return (
+                <Link
+                  key={spec.id}
+                  href={`/specialized/${spec.id}`}
+                  className="rounded-3xl border border-white/10 bg-black/40 p-5 transition hover:border-violet-400/35"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-display text-lg text-white">{spec.title}</div>
+                    <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400">{pct}%</span>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm text-zinc-500">{spec.tagline}</p>
+                  <div className="mt-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">
+                    <Sparkles className="h-3.5 w-3.5" /> Open labs
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </GlassCard>
+      ) : null}
     </div>
   );
 }

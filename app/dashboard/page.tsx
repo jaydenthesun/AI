@@ -1,21 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  Rocket,
-  Radar,
-  Flame,
-  Target,
-  BookOpenCheck,
-  Gauge,
-  MessageSquareText,
-  ListChecks,
-  Brain,
-  Orbit,
-} from "lucide-react";
+import { Rocket, Radar, Flame, Target, BookOpenCheck, Gauge, MessageSquareText, ListChecks, Sparkles, Brain, Orbit } from "lucide-react";
+
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { ProgressRings } from "@/components/dashboard/ProgressRings";
@@ -24,6 +14,11 @@ import { useLocalCourse } from "@/lib/hooks/useLocalCourse";
 import { adaptLearningPath } from "@/lib/feedbackLoop";
 import { inferLearnerNarratives } from "@/lib/learnerNarrative";
 import { mockAdaptiveRecommendations } from "@/lib/mockAI";
+import { specializedCourses } from "@/data/specializedCourses";
+import { loadPurchasedCourseIds } from "@/lib/purchasedCourses";
+import { getModulesForCourse } from "@/lib/specializedModules";
+import { moduleProgressFraction } from "@/lib/specializedProgress";
+
 import { loadPerformance, savePerformance } from "@/lib/storage";
 
 export default function DashboardPage() {
@@ -98,6 +93,8 @@ export default function DashboardPage() {
 
   const overallPct = Math.round(lessonPct * 0.55 + roadmapPct * 0.45);
 
+  const ownedSpecialized = specializedCourses.filter((c) => purchasedSpecIds.includes(c.id));
+
   const difficultyLabel =
     profile.codingLevel === "advanced"
       ? meanScore !== null && meanScore > 85
@@ -140,7 +137,54 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {overlay?.injectedLessons?.length && overlay.lastMutationSummary ? (
+      {ownedSpecialized.length > 0 ? (
+        <GlassCard className="border-emerald-400/20 bg-gradient-to-r from-emerald-500/[0.06] to-cyan-500/[0.04]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-500/10">
+                <Sparkles className="h-5 w-5 text-emerald-200" />
+              </span>
+              <div>
+                <div className="text-xs uppercase tracking-[0.25em] text-emerald-200/80">Specialized tracks</div>
+                <h2 className="mt-1 font-display text-xl text-white">USDC tracks you unlocked</h2>
+                <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+                  Open labs, checkpoints, and capstones — progress saves in this browser.
+                </p>
+              </div>
+            </div>
+            <Link href="/courses">
+              <GlowButton variant="ghost">Course store</GlowButton>
+            </Link>
+          </div>
+          <ul className="mt-8 grid gap-4 md:grid-cols-2">
+            {ownedSpecialized.map((spec) => {
+              const modules = getModulesForCourse(spec);
+              const pct = moduleProgressFraction(spec.id, modules.length);
+              return (
+                <li key={spec.id}>
+                  <Link
+                    href={`/specialized/${spec.id}`}
+                    className="flex flex-col rounded-2xl border border-white/10 bg-black/35 p-5 transition hover:border-cyan-400/35"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">{spec.badge}</div>
+                        <div className="mt-1 font-display text-lg text-white">{spec.title}</div>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-100">
+                        {pct}% done
+                      </span>
+                    </div>
+                    <p className="mt-3 line-clamp-2 text-sm text-zinc-400">{spec.tagline}</p>
+                    <span className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Continue track →</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </GlassCard>
+
+        {overlay?.injectedLessons?.length && overlay.lastMutationSummary ? (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

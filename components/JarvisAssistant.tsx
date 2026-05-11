@@ -310,19 +310,25 @@ export function JarvisAssistant() {
       <motion.button
         type="button"
         aria-expanded={open}
-        aria-label={open ? "Close CodePath mentor" : "Open CodePath mentor"}
+        aria-label={open ? "Close Jarvis AI mentor" : "Open Jarvis AI mentor"}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "relative flex h-10 w-10 items-center justify-center rounded-full",
-          "border border-cyan-400/50 bg-gradient-to-br from-cyan-500/25 via-violet-600/30 to-fuchsia-600/25",
-          "shadow-[0_0_22px_rgba(94,234,212,0.35),0_0_48px_rgba(167,139,250,0.25)]",
-          "transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60",
+          "relative flex max-w-[min(100vw-8rem,17rem)] items-center gap-2.5 rounded-full pr-3 sm:pr-4",
+          "border border-cyan-400/55 bg-gradient-to-r from-cyan-500/30 via-violet-600/25 to-fuchsia-600/25",
+          "py-2 pl-2.5 shadow-[0_0_28px_rgba(94,234,212,0.38),0_0_56px_rgba(167,139,250,0.22)]",
+          "ring-1 ring-cyan-400/25 transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70",
         )}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.97 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
       >
-        <span className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-cyan-400/15 blur-md" />
-        <Sparkles className="relative h-[18px] w-[18px] text-cyan-100 drop-shadow-[0_0_8px_rgba(94,234,212,0.9)]" />
+        <span className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-cyan-400/12 blur-md" />
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/30">
+          <Sparkles className="h-[18px] w-[18px] text-cyan-100 drop-shadow-[0_0_10px_rgba(94,234,212,0.95)]" />
+        </span>
+        <span className="relative min-w-0 flex-1 text-left">
+          <span className="block truncate font-display text-sm font-semibold tracking-tight text-white">Jarvis AI</span>
+          <span className="hidden text-[11px] leading-tight text-cyan-100/85 sm:block">Tap to ask your mentor</span>
+        </span>
       </motion.button>
 
       <AnimatePresence>
