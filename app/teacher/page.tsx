@@ -65,12 +65,11 @@ export default function TeacherPage() {
           studentName: student.name,
         }),
       });
+      if (!res.ok) {
+        console.error(`Scoring failed: HTTP ${res.status}`);
+        return;
+      }
       const data = (await res.json()) as {
-        score: number;
-        rationale: string;
-        strengths: string[];
-        gaps: string[];
-      };
 
       const next = appendScoredSubmission(student.id, {
         label: label.trim() || "Submission",
