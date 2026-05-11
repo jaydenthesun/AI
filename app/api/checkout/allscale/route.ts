@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       stable_coin: StableCoin.USDC,
       amount_cents: amount,
       order_id: orderId,
-      order_description: `${course.title} — CodePath Agent specialized track`,
+  const orderId = `cp_${course.slug}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`.slice(0, 120);
       redirect_url: redirectUrl,
       extra: {
         product: "codepath_specialized_course",
