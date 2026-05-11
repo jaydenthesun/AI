@@ -11,6 +11,7 @@ const links = [
   { href: "/", label: "Product" },
   { href: "/onboarding", label: "Onboarding" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/courses", label: "Course store" },
   { href: "/course-path", label: "Course path" },
   { href: "/code-review", label: "Code Review" },
   { href: "/model-routing", label: "Routing" },
