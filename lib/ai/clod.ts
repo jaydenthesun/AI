@@ -26,7 +26,7 @@ export async function clodChatCompletion(
     body: JSON.stringify({
       model,
       messages,
-      temperature: options?.temperature ?? 0.55,
+      temperature: options?.temperature ?? 0.5,
       max_completion_tokens: options?.maxTokens ?? 2048,
     }),
   });

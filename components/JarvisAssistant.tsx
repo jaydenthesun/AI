@@ -296,7 +296,7 @@ export function JarvisAssistant() {
         const text = results?.[0]?.[0]?.transcript?.trim() ?? "";
         if (text) {
           setInput(text);
-          runReply(text);
+          void runReply(text);
         }
       };
       rec.start();

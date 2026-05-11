@@ -125,6 +125,21 @@ export function mockCodeReview(
   const nextLessonId = matched?.id ?? fallbackLesson;
   const relatedTitle = matched?.title ?? lessons.find((l) => l.id === nextLessonId)?.title ?? "Foundations module";
 
+  const improvementRationale = [
+    {
+      change: "Hoist pure parsing + validation ahead of side effects",
+      why: "Separates IO from logic so tests can pin invariants and regressions surface faster—staff reviewers expect this boundary.",
+    },
+    {
+      change: "Replace ambiguous names with domain verbs",
+      why: "Readable code reduces onboarding cost for teammates and mirrors how Greptile surfaces structural debt clusters.",
+    },
+    {
+      change: "Guard boundary inputs before looping",
+      why: "Fails fast on nonsense inputs instead of poisoning downstream state—critical for resilient services.",
+    },
+  ];
+
   return {
     score,
     categoryScores,
@@ -136,6 +151,7 @@ export function mockCodeReview(
       "Mirror Greptile-style structural diff for long-term maintainability.",
       "Instrument micro-benchmarks before optimizing hot paths.",
     ],
+    improvementRationale,
     improvedCode: `${code.trim()}\n\n// ✨ Guided refinement (mock)\nexport const refined = hoistPure(parse(source));\n`,
     efficiency,
     problemSolving,
