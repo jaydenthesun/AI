@@ -1,186 +1,233 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Activity, BellRing, LineChart, Users } from "lucide-react";
+import { GraduationCap, Plus, Sparkles, Users } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import {
-  mockClassStudents,
-  mockClassWeakAreas,
-  mockGeneratedAssignments,
-  mockInterventions,
-  mockRecentSubmissions,
-} from "@/data/mockTeacherData";
+  addTeacherStudent,
+  appendScoredSubmission,
+  classAverageScore,
+  loadTeacherRoster,
+  teacherAverageScore,
+  type TeacherStudent,
+} from "@/lib/teacherStudents";
 
 export default function TeacherPage() {
-  const avgScore =
-    mockClassStudents.reduce((acc, s) => acc + s.averageScore, 0) / mockClassStudents.length;
+  const [students, setStudents] = useState<TeacherStudent[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [draftByStudent, setDraftByStudent] = useState<Record<string, { label: string; body: string }>>({});
+  const [scoringId, setScoringId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStudents(loadTeacherRoster());
+    setHydrated(true);
+  }, []);
+
+  const classAvg = useMemo(() => classAverageScore(students), [students]);
+
+  function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+    addTeacherStudent(name);
+    setStudents(loadTeacherRoster());
+    setNewName("");
+  }
+
+  function draft(studentId: string) {
+    return draftByStudent[studentId] ?? { label: "", body: "" };
+  }
+
+  function setDraft(studentId: string, patch: Partial<{ label: string; body: string }>) {
+    setDraftByStudent((prev) => ({
+      ...prev,
+      [studentId]: { ...draft(studentId), ...patch },
+    }));
+  }
+
+  async function scoreSubmission(student: TeacherStudent) {
+    const { label, body } = draft(student.id);
+    const submission = body.trim();
+    if (!submission || scoringId) return;
+
+    setScoringId(student.id);
+    try {
+      const res = await fetch("/api/teacher/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission,
+          assignmentTitle: label.trim() || undefined,
+          studentName: student.name,
+        }),
+      });
+      const data = (await res.json()) as {
+        score: number;
+        rationale: string;
+        strengths: string[];
+        gaps: string[];
+      };
+
+      const next = appendScoredSubmission(student.id, {
+        label: label.trim() || "Submission",
+        submission,
+        score: typeof data.score === "number" ? data.score : 0,
+        rationale: data.rationale ?? "",
+        strengths: Array.isArray(data.strengths) ? data.strengths : [],
+        gaps: Array.isArray(data.gaps) ? data.gaps : [],
+      });
+      setStudents(next);
+      setDraft(student.id, { body: "", label: "" });
+    } catch {
+      console.error("Scoring request failed");
+    } finally {
+      setScoringId(null);
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-14 sm:px-6 lg:py-16">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto max-w-3xl space-y-10 px-4 py-14 sm:px-6 lg:py-16">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-xs uppercase tracking-[0.3em] text-cyan-200/70">Instructor plane</div>
-          <h1 className="mt-3 font-display text-4xl text-white">Teacher analytics core</h1>
-          <p className="mt-4 max-w-2xl text-zinc-400">
-            Class-level telemetry, AI feedback archives, and intervention signals — premium glass panels with mock classroom data.
+          <h1 className="mt-3 font-display text-4xl text-white">Students</h1>
+          <p className="mt-4 max-w-xl text-zinc-400">
+            Add learners by name only—no sample roster. Paste written or code submissions and run AI scoring (Clōd when{" "}
+            <code className="text-zinc-300">CLOD_API_KEY</code> is set). Data stays in this browser.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/dashboard">
-            <GlowButton variant="ghost">Learner view</GlowButton>
-          </Link>
-          <GlowButton>Export summary (mock)</GlowButton>
+        <Link href="/dashboard">
+          <GlowButton variant="ghost">Learner view</GlowButton>
+        </Link>
+      </div>
+
+      <GlassCard>
+        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <Plus className="h-4 w-4 text-cyan-200" /> Add student
         </div>
-      </div>
+        <form onSubmit={handleAdd} className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="flex-1">
+            <span className="sr-only">Student name</span>
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Full name"
+              className="w-full rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm text-white outline-none ring-cyan-400/35 focus:ring"
+            />
+          </label>
+          <GlowButton type="submit" className="shrink-0">
+            Add
+          </GlowButton>
+        </form>
+      </GlassCard>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <GlassCard>
-          <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-[0.3em] text-zinc-500">Roster energy</div>
-            <Users className="h-5 w-5 text-cyan-200" />
+      {hydrated && students.length === 0 ? (
+        <GlassCard className="border-dashed border-white/15 bg-black/25">
+          <div className="flex items-center gap-3 text-zinc-400">
+            <Users className="h-8 w-8 shrink-0 text-zinc-600" />
+            <p className="text-sm">No students yet. Add someone above—there are no template rows.</p>
           </div>
-          <div className="mt-4 text-4xl font-semibold text-white">{mockClassStudents.length}</div>
-          <p className="mt-2 text-sm text-zinc-400">Active pathways with adaptive tutors attached.</p>
         </GlassCard>
-        <GlassCard delay={0.05}>
-          <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-[0.3em] text-zinc-500">Class average</div>
-            <LineChart className="h-5 w-5 text-fuchsia-200" />
-          </div>
-          <div className="mt-4 text-4xl font-semibold text-white">{Math.round(avgScore)}</div>
-          <p className="mt-2 text-sm text-zinc-400">Aggregated over mock assignment + quiz heuristics.</p>
-        </GlassCard>
-        <GlassCard delay={0.1}>
-          <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-[0.3em] text-zinc-500">Interventions</div>
-            <BellRing className="h-5 w-5 text-amber-200" />
-          </div>
-          <div className="mt-4 text-4xl font-semibold text-white">{mockInterventions.length}</div>
-          <p className="mt-2 text-sm text-zinc-400">Suggested nudges awaiting human approval.</p>
-        </GlassCard>
-      </div>
+      ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <GlassCard className="p-0">
-          <div className="border-b border-white/10 px-6 py-4 text-sm font-semibold text-white">Student progress</div>
-          <div className="divide-y divide-white/5">
-            {mockClassStudents.map((s) => (
-              <motion.div key={s.id} layout className="grid gap-4 px-6 py-5 md:grid-cols-[1.2fr_0.8fr]">
-                <div>
-                  <div className="text-lg font-semibold text-white">{s.name}</div>
-                  <div className="mt-1 text-xs uppercase tracking-[0.25em] text-zinc-500">{s.engagement} engagement</div>
-                  <p className="mt-3 text-sm text-zinc-400">Last: {s.lastSubmission}</p>
-                </div>
-                <div className="space-y-3 text-sm text-zinc-300">
-                  <div className="flex items-center justify-between">
-                    <span>Roadmap</span>
-                    <span className="text-white">{s.roadmapProgress}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/5">
-                    <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: `${s.roadmapProgress}%` }} />
-                  </div>
-                  <div className="rounded-2xl border border-rose-400/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-100">
-                    Weak focus: {s.weakArea}
-                  </div>
-                  {s.snapshot.weakTopics?.length ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {s.snapshot.weakTopics.map((t) => (
-                        <span key={t} className="rounded-full border border-white/10 bg-black/50 px-2 py-1 text-[10px] text-zinc-400">
-                          {t}
-                        </span>
-                      ))}
+      {students.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-6 text-sm text-zinc-500">
+          <span>
+            Roster: <span className="text-white">{students.length}</span>
+          </span>
+          <span>
+            Class average (AI-scored): <span className="text-white">{classAvg !== null ? `${classAvg}` : "—"}</span>
+          </span>
+        </div>
+      ) : null}
+
+      <div className="space-y-6">
+        {students.map((s, idx) => {
+          const avg = teacherAverageScore(s);
+          const d = draft(s.id);
+          const busy = scoringId === s.id;
+
+          return (
+            <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}>
+              <GlassCard>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                      <GraduationCap className="h-5 w-5 text-violet-200" />
                     </div>
-                  ) : null}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </GlassCard>
-
-        <div className="space-y-6">
-          <GlassCard>
-            <div className="flex items-center gap-2 text-sm font-semibold text-white">
-              <Activity className="h-4 w-4 text-emerald-200" /> Class-wide weak spectra
-            </div>
-            <div className="mt-5 space-y-4">
-              {mockClassWeakAreas.map((row) => (
-                <div key={row.topic} className="flex items-center gap-4">
-                  <div className="flex-1 text-sm text-zinc-300">{row.topic}</div>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/5">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${row.count * 10}%` }}
-                      transition={{ duration: 0.8 }}
-                      className="h-full rounded-full bg-gradient-to-r from-rose-400 to-orange-400"
-                    />
-                  </div>
-                  <div className="w-12 text-right text-xs text-zinc-500">{row.count}</div>
-                </div>
-              ))}
-            </div>
-          </GlassCard>
-
-          <GlassCard delay={0.05}>
-            <div className="text-sm font-semibold text-white">Recent submissions</div>
-            <div className="mt-4 space-y-3">
-              {mockRecentSubmissions.map((row) => (
-                <div key={row.student + row.title} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm">
-                  <div>
-                    <div className="font-semibold text-white">{row.student}</div>
-                    <div className="text-xs text-zinc-400">{row.title}</div>
-                  </div>
-                  <div className="text-emerald-200">{row.score}</div>
-                </div>
-              ))}
-            </div>
-          </GlassCard>
-
-          <GlassCard delay={0.1}>
-            <div className="text-sm font-semibold text-white">AI feedback history · suggested interventions</div>
-            <ul className="mt-4 space-y-3 text-sm text-zinc-300">
-              {mockInterventions.map((msg) => (
-                <li key={msg} className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 px-3 py-3">
-                  {msg}
-                </li>
-              ))}
-            </ul>
-          </GlassCard>
-
-          <GlassCard delay={0.12}>
-            <div className="text-sm font-semibold text-white">Generated assignments (mock approvals)</div>
-            <p className="mt-2 text-xs text-zinc-500">Simulates Claude-authored drafts awaiting mentor sign-off.</p>
-            <div className="mt-5 space-y-4">
-              {mockGeneratedAssignments.map((g) => (
-                <div key={g.id} className="rounded-2xl border border-white/10 bg-black/40 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-semibold text-white">{g.title}</div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-                        g.status === "approved"
-                          ? "border border-emerald-400/40 bg-emerald-400/15 text-emerald-100"
-                          : g.status === "pending_approval"
-                            ? "border border-amber-400/40 bg-amber-400/10 text-amber-50"
-                            : "border border-white/15 bg-white/5 text-zinc-300"
-                      }`}
-                    >
-                      {g.status.replaceAll("_", " ")}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-zinc-400">{g.summary}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {g.targetTopics.map((t) => (
-                      <span key={t} className="rounded-full bg-white/5 px-2 py-1 text-[11px] text-zinc-400">
-                        {t}
-                      </span>
-                    ))}
+                    <div>
+                      <div className="text-lg font-semibold text-white">{s.name}</div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        Average (AI): <span className="text-zinc-300">{avg !== null ? `${avg} / 100` : "No scores yet"}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </GlassCard>
-        </div>
+
+                <div className="mt-8 border-t border-white/10 pt-6">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Sparkles className="h-4 w-4 text-amber-200" /> Score a submission
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Optional label, then paste work. Uses Clōd when configured; otherwise a local heuristic preview.
+                  </p>
+                  <input
+                    value={d.label}
+                    onChange={(e) => setDraft(s.id, { label: e.target.value })}
+                    placeholder="Assignment label (optional)"
+                    className="mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white outline-none ring-cyan-400/30 focus:ring"
+                  />
+                  <textarea
+                    value={d.body}
+                    onChange={(e) => setDraft(s.id, { body: e.target.value })}
+                    rows={8}
+                    placeholder="Paste student submission…"
+                    className="mt-3 w-full rounded-2xl border border-white/10 bg-black/40 p-4 font-mono text-xs leading-relaxed text-zinc-100 outline-none ring-cyan-400/35 focus:ring"
+                  />
+                  <GlowButton disabled={busy || !d.body.trim()} onClick={() => scoreSubmission(s)} className="mt-4 w-full sm:w-auto">
+                    {busy ? "Scoring…" : "Score with AI"}
+                  </GlowButton>
+                </div>
+
+                {s.submissions.length > 0 ? (
+                  <div className="mt-8 border-t border-white/10 pt-6">
+                    <div className="text-xs uppercase tracking-[0.25em] text-zinc-500">Scoring history</div>
+                    <ul className="mt-4 space-y-4">
+                      {[...s.submissions].reverse().map((sub) => (
+                        <li key={sub.id} className="rounded-2xl border border-white/10 bg-black/35 p-4 text-sm">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="font-semibold text-white">{sub.label}</span>
+                            <span className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-0.5 text-emerald-100">
+                              {sub.score} / 100
+                            </span>
+                          </div>
+                          <p className="mt-3 text-zinc-300">{sub.rationale}</p>
+                          {sub.strengths.length > 0 ? (
+                            <div className="mt-3 text-xs text-emerald-100/90">
+                              <span className="text-zinc-500">Strengths: </span>
+                              {sub.strengths.join(" · ")}
+                            </div>
+                          ) : null}
+                          {sub.gaps.length > 0 ? (
+                            <div className="mt-2 text-xs text-amber-100/85">
+                              <span className="text-zinc-500">Gaps: </span>
+                              {sub.gaps.join(" · ")}
+                            </div>
+                          ) : null}
+                          <div className="mt-3 text-[11px] text-zinc-600">{new Date(sub.scoredAt).toLocaleString()}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </GlassCard>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

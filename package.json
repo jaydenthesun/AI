@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 127.0.0.1 -p 3000",
+    "dev": "next dev -H 127.0.0.1 -p 3456",
     "build": "next build",
-    "start": "next start -H 127.0.0.1 -p 3000",
-    "preview": "next build && next start -H 127.0.0.1 -p 3333",
+    "start": "next start -H 127.0.0.1 -p 3456",
+    "preview": "next build && next start -H 127.0.0.1 -p 3456",
     "lint": "next lint"
   },
   "dependencies": {

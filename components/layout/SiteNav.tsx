@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import { JarvisAssistant } from "@/components/JarvisAssistant";
 import { Orbit } from "lucide-react";
 
 const links = [
@@ -20,8 +21,10 @@ export function SiteNav() {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-abyss/70 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight text-white">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 flex-shrink-0 items-center gap-2 sm:gap-3">
+          <JarvisAssistant />
+          <Link href="/" className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight text-white">
           <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/30 via-violet-400/30 to-fuchsia-400/30 shadow-glow">
             <Orbit className="h-5 w-5 text-cyan-200" />
           </span>
@@ -30,6 +33,7 @@ export function SiteNav() {
             <div className="text-[11px] font-normal text-zinc-400">Learning OS</div>
           </div>
         </Link>
+        </div>
         <nav className="flex max-w-[52vw] flex-wrap items-center justify-end gap-1 sm:max-w-none md:flex md:max-w-none">
           {links.map((l) => {
             const active = pathname === l.href;
