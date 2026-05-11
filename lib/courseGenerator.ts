@@ -132,7 +132,8 @@ export function generateCoursePlan(answers: OnboardingAnswers): CoursePlan {
               : ["Correctness", "Readability", "Tests/validation", "Narrative of tradeoffs"],
       estimatedMinutes: Math.round((45 + idx * 10) * pacing.lessonMinuteFactor),
     };
-    return base;
+    const enriched = enrichAssignmentCopy(base, answers, seedPerf, l.topic);
+    return { ...base, description: enriched.description, title: enriched.title };
   });
 
   const assessments: Assessment[] = [

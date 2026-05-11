@@ -70,6 +70,12 @@ export default function TeacherPage() {
         return;
       }
       const data = (await res.json()) as {
+        score: number;
+        rationale: string;
+        strengths?: string[];
+        gaps?: string[];
+        feedback_report?: { title: string; sections: Array<{ title: string; content: string[] }>; final_score: number; overall: string };
+      };
 
       const next = appendScoredSubmission(student.id, {
         label: label.trim() || "Submission",
