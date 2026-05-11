@@ -13,9 +13,10 @@ import Link from "next/link";
 import {
   appendFeedbackEntry,
   bumpStreak,
-  loadCoursePlan,
+  loadDisplayCoursePlan,
   loadPerformance,
   savePerformance,
+  syncAdaptivePlanFromPerformance,
 } from "@/lib/storage";
 
 export default function CodeReviewPage() {
@@ -30,7 +31,7 @@ export default function CodeReviewPage() {
     setLoading(true);
     setTimeout(() => {
       const perf0 = bumpStreak(loadPerformance());
-      const course = loadCoursePlan();
+      const course = loadDisplayCoursePlan();
       const review = mockCodeReview(code, language, {
         lessons: course?.lessons,
         weakTopics: perf0.weakTopics,
@@ -54,6 +55,7 @@ export default function CodeReviewPage() {
         ].slice(0, 24),
       };
       savePerformance(next);
+      syncAdaptivePlanFromPerformance();
       setLoading(false);
     }, 900);
   }
@@ -190,6 +192,15 @@ export default function CodeReviewPage() {
                   {result.improvements.map((i) => (
                     <li key={i} className="rounded-2xl border border-white/10 bg-black/45 px-3 py-2">
                       {i}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 text-xs uppercase tracking-[0.3em] text-zinc-500">Why these edits (mentor rationale)</div>
+                <ul className="mt-3 space-y-3 text-sm text-zinc-400">
+                  {result.improvementRationale.map((row) => (
+                    <li key={row.change} className="rounded-2xl border border-violet-400/25 bg-violet-500/10 px-3 py-3">
+                      <div className="font-medium text-white">{row.change}</div>
+                      <p className="mt-2 text-xs leading-relaxed text-zinc-300">{row.why}</p>
                     </li>
                   ))}
                 </ul>

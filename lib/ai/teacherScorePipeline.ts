@@ -1,5 +1,6 @@
 import { clodChatCompletion } from "./clod";
 import { stripMarkdownBoldMarkers } from "./formatAnswer";
+import { parseJsonObject } from "./jsonExtract";
 
 export interface TeacherScoreResult {
   score: number;
@@ -8,7 +9,7 @@ export interface TeacherScoreResult {
   gaps: string[];
 }
 
-function normalizeList(v: unknown): string[] {
+function normalizeStringList(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
   return v.filter((x): x is string => typeof x === "string").map((s) => stripMarkdownBoldMarkers(s.trim()));
 }
@@ -20,19 +21,21 @@ export async function runTeacherScore(params: {
   rubric?: string;
 }): Promise<TeacherScoreResult> {
   const system = [
-    "You are an experienced computer science instructor grading student work fairly.",
-    "Return ONE JSON object only, keys exactly:",
+    "You are an experienced computer science instructor grading student work fairly and consistently.",
+    "Return ONE JSON object only, no markdown fences, keys exactly:",
     '{"score": number, "rationale": string, "strengths": string[], "gaps": string[]}',
-    "score: integer 0-100. rationale: 2-4 plain sentences. No markdown bold (**).",
+    "score: integer 0-100 inclusive.",
+    "rationale: 2-4 plain sentences. No markdown bold (**).",
+    "strengths: 1-4 short bullet-style strings; gaps: 1-4 areas to improve.",
     params.rubric?.trim()
-      ? `Rubric:\n${params.rubric.trim()}`
-      : "Use standard intro CS criteria: correctness, clarity, completeness.",
+      ? `Apply this rubric / criteria when judging:\n${params.rubric.trim()}`
+      : "Judge correctness, clarity, and completeness for introductory–intermediate CS coursework.",
   ].join("\n");
 
   const user = [
-    params.studentName ? `Student: ${params.studentName}` : "",
-    params.assignmentTitle ? `Assignment: ${params.assignmentTitle}` : "",
-    "Submission:\n---\n" + params.submission.trim().slice(0, 28000) + "\n---",
+    params.studentName ? `Student name: ${params.studentName}` : "",
+    params.assignmentTitle ? `Assignment / task label: ${params.assignmentTitle}` : "",
+    "Work submitted for grading:\n---\n" + params.submission.trim().slice(0, 28000) + "\n---",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -61,10 +64,10 @@ export async function runTeacherScore(params: {
   return {
     score,
     rationale: stripMarkdownBoldMarkers(
-      typeof parsed.rationale === "string" ? parsed.rationale : "Graded response; see strengths and gaps.",
+      typeof parsed.rationale === "string" ? parsed.rationale : "Graded via model output; see strengths and gaps.",
     ),
-    strengths: normalizeList(parsed.strengths).slice(0, 4),
-    gaps: normalizeList(parsed.gaps).slice(0, 4),
+    strengths: normalizeStringList(parsed.strengths).slice(0, 4),
+    gaps: normalizeStringList(parsed.gaps).slice(0, 4),
   };
 }
 
@@ -78,9 +81,9 @@ export function mockTeacherScore(submission: string): TeacherScoreResult {
     score,
     rationale:
       len < 30
-        ? "Submission is very short; encourage fuller explanations."
-        : "Heuristic preview — set CLOD_API_KEY for full AI grading.",
-    strengths: len >= 60 ? ["Structured attempt", "Addresses the prompt"] : ["Attempt recorded"],
-    gaps: len < 80 ? ["Expand reasoning", "Add examples"] : ["Deepen analysis"],
+        ? "Submission is very short; encourage fuller explanations and examples."
+        : "Heuristic preview score only — set CLOD_API_KEY for model-based grading aligned to your rubric.",
+    strengths: len >= 60 ? ["Shows structured thinking", "Addresses the prompt"] : ["Attempt recorded"],
+    gaps: len < 80 ? ["Expand reasoning and edge cases", "Add concrete examples"] : ["Deepen analysis"],
   };
 }

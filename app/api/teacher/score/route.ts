@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   };
 
   const submission = typeof body.submission === "string" ? body.submission : "";
+
   if (!submission.trim()) {
     return NextResponse.json({ error: "submission is required" }, { status: 400 });
   }
@@ -20,13 +21,19 @@ export async function POST(request: Request) {
 
   if (process.env.CLOD_API_KEY) {
     try {
-      const result = await runTeacherScore({ submission, assignmentTitle, studentName, rubric });
+      const result = await runTeacherScore({
+        submission,
+        assignmentTitle,
+        studentName,
+        rubric,
+      });
       return NextResponse.json({ ...result, mode: "live" as const });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Scoring failed";
       console.error("[api/teacher/score]", message);
+      const fallback = mockTeacherScore(submission);
       return NextResponse.json({
-        ...mockTeacherScore(submission),
+        ...fallback,
         mode: "fallback_heuristic" as const,
         warning: message,
       });
@@ -36,6 +43,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ...mockTeacherScore(submission),
     mode: "heuristic" as const,
-    hint: "Set CLOD_API_KEY for AI-aligned scores.",
+    hint: "Set CLOD_API_KEY for AI-aligned numeric scores and feedback.",
   });
 }

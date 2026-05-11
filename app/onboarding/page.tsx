@@ -7,13 +7,15 @@ import type {
   AttentionSpan,
   CodingLevel,
   InterestArea,
+  LearningGoalArchetype,
   LearningStyle,
   MotivationStyle,
   PreferredLanguage,
   ProjectStyle,
 } from "@/data/types";
 import { generateCoursePlan } from "@/lib/courseGenerator";
-import { saveCoursePlan, saveOnboardingProfile } from "@/lib/storage";
+import { inferGoalArchetype } from "@/lib/personalization";
+import { clearAdaptiveOverlay, saveCoursePlan, saveOnboardingProfile } from "@/lib/storage";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/cn";
@@ -45,10 +47,18 @@ const ATTENTION_LABEL: Record<AttentionSpan, string> = {
 const LEARNING_LABEL: Record<LearningStyle, string> = {
   visual: "Visual",
   step_by_step: "Step-by-step",
+  reading_focused: "Reading-focused (dense prose)",
   reverse_engineering: "Reverse-engineering",
   game_based: "Game-based",
   project_based: "Project-based",
   challenge_based: "Challenge-based",
+};
+
+const GOAL_ARCHETYPE_LABEL: Record<LearningGoalArchetype, string> = {
+  pass_class: "Ace a class / exams",
+  portfolio: "Build portfolio & ship products",
+  contests: "Competitive programming",
+  casual_exploration: "Explore CS casually",
 };
 
 export default function OnboardingPage() {
@@ -63,6 +73,7 @@ export default function OnboardingPage() {
   const [weeklyHours, setWeeklyHours] = useState(6);
   const [interests, setInterests] = useState<InterestArea[]>(["ai", "websites"]);
   const [projectStyle, setProjectStyle] = useState<ProjectStyle>("guided");
+  const [goalArchetype, setGoalArchetype] = useState<LearningGoalArchetype | null>(null);
   const [goals, setGoals] = useState(
     "Ship a portfolio-ready full-stack project and pass algorithmic interviews with confidence.",
   );
@@ -83,6 +94,7 @@ export default function OnboardingPage() {
   }
 
   function finish() {
+    const resolvedArchetype = goalArchetype ?? inferGoalArchetype(goals.trim());
     const answers = {
       codingLevel,
       learningStyles,
@@ -94,8 +106,10 @@ export default function OnboardingPage() {
       motivationStyle,
       preferredLanguage,
       attentionSpan,
+      goalArchetype: resolvedArchetype,
     };
     saveOnboardingProfile(answers);
+    clearAdaptiveOverlay();
     const plan = generateCoursePlan(answers);
     saveCoursePlan(plan);
     router.push("/dashboard");
@@ -337,7 +351,27 @@ export default function OnboardingPage() {
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
               <h2 className="font-display text-2xl text-white">North star narrative</h2>
-              <p className="mt-3 text-sm text-zinc-400">Your goals personalize milestones, proofs, and capstone rituals.</p>
+              <p className="mt-3 text-sm text-zinc-400">
+                Pick the trajectory that matches why you&apos;re learning—then narrate nuance below. We infer from keywords if you
+                skip this.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {( ["pass_class", "portfolio", "contests", "casual_exploration"] as LearningGoalArchetype[] ).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGoalArchetype(g)}
+                    className={cn(
+                      "rounded-2xl border px-4 py-4 text-left text-sm transition",
+                      goalArchetype === g
+                        ? "border-fuchsia-300/70 bg-fuchsia-500/15 text-white"
+                        : "border-white/10 bg-black/40 text-zinc-300 hover:border-white/20",
+                    )}
+                  >
+                    {GOAL_ARCHETYPE_LABEL[g]}
+                  </button>
+                ))}
+              </div>
               <textarea
                 value={goals}
                 onChange={(e) => setGoals(e.target.value)}

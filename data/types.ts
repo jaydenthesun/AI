@@ -6,6 +6,7 @@ export type CodingLevel =
 export type LearningStyle =
   | "visual"
   | "step_by_step"
+  | "reading_focused"
   | "reverse_engineering"
   | "game_based"
   | "project_based"
@@ -42,6 +43,13 @@ export type PreferredLanguage =
 /** Preferred session shape — informs pacing copy and lesson density hints. */
 export type AttentionSpan = "short_bursts" | "medium_sessions" | "deep_focus";
 
+/** Drives assessment mix, project weighting, and algorithm density in generated paths. */
+export type LearningGoalArchetype =
+  | "pass_class"
+  | "portfolio"
+  | "contests"
+  | "casual_exploration";
+
 export interface OnboardingAnswers {
   codingLevel: CodingLevel;
   learningStyles: LearningStyle[];
@@ -54,6 +62,7 @@ export interface OnboardingAnswers {
   /** Set during onboarding; optional for legacy stored profiles. */
   preferredLanguage?: PreferredLanguage;
   attentionSpan?: AttentionSpan;
+  goalArchetype?: LearningGoalArchetype;
 }
 
 export interface StudentProfile extends OnboardingAnswers {
@@ -64,6 +73,17 @@ export interface StudentProfile extends OnboardingAnswers {
 
 export type ItemStatus = "locked" | "available" | "in_progress" | "completed";
 
+export type LessonBeatKind = "predict" | "micro_reflect" | "checkpoint";
+
+/** Interleaved micro-interactions for hands-on / adaptive pacing (mock). */
+export interface LessonBeat {
+  id: string;
+  kind: LessonBeatKind;
+  prompt: string;
+  options?: string[];
+  correctIndex?: number;
+}
+
 export interface LessonSection {
   id: string;
   title: string;
@@ -72,6 +92,8 @@ export interface LessonSection {
   diagramPrompt?: string;
   codeExample?: string;
   videoPlaceholder?: string;
+  /** Inline beats appear after section body when expanded. */
+  beats?: LessonBeat[];
 }
 
 export interface Lesson {
@@ -143,6 +165,8 @@ export interface CoursePlan {
   assignments: Assignment[];
   assessments: Assessment[];
   estimatedWeeks: number;
+  /** High weekly hours: optional stretch lesson ids surfaced in UI. */
+  optionalChallengeLessonIds?: string[];
 }
 
 export type FeedbackKind = "assignment" | "quiz" | "code_review";
@@ -164,6 +188,25 @@ export interface CodeSubmissionEntry {
   excerpt: string;
 }
 
+export interface BehaviorSignals {
+  optionalChallengeSkips: number;
+  lessonSectionQuickCollapseCount: number;
+  quizTotalSeconds: number;
+  quizSessionsCompleted: number;
+  quizQuickGuessCount: number;
+  lessonBeatsCompleted: number;
+}
+
+/** Adaptive injections layered on top of the saved CoursePlan (display + messaging). */
+export interface AdaptivePlanOverlay {
+  injectedLessons: Lesson[];
+  injectIntoWeekIndex: number;
+  prependLessonIdsToWeek: string[];
+  lastMutationAt: string;
+  lastMutationSummary: string;
+  planRevision: number;
+}
+
 export interface PerformanceSnapshot {
   assignmentScores: Record<string, number>;
   quizScores: Record<string, number>;
@@ -171,6 +214,8 @@ export interface PerformanceSnapshot {
   retryCountByTopic: Record<string, number>;
   strongTopics: string[];
   weakTopics: string[];
+  /** Topic → inferred facets (e.g. decomposition vs nested_structure). */
+  weakTopicFacets: Record<string, string[]>;
   difficultySuccessRate: Record<string, number>;
   confidenceRatings: Record<string, number>;
   completedLessonIds: string[];
@@ -180,6 +225,7 @@ export interface PerformanceSnapshot {
   lastActiveDate: string;
   recentFeedback: FeedbackEntry[];
   codeSubmissions: CodeSubmissionEntry[];
+  behaviorSignals: BehaviorSignals;
 }
 
 export interface AdaptationDirective {
@@ -205,6 +251,11 @@ export interface CodeReviewCategoryScores {
   problemSolving: number;
 }
 
+export interface CodeImprovementRationale {
+  change: string;
+  why: string;
+}
+
 export interface CodeReviewResult {
   score: number;
   categoryScores: CodeReviewCategoryScores;
@@ -212,6 +263,7 @@ export interface CodeReviewResult {
   readability: string;
   bugs: string[];
   improvements: string[];
+  improvementRationale: CodeImprovementRationale[];
   improvedCode: string;
   efficiency: string;
   problemSolving: string;

@@ -1,4 +1,4 @@
-/** Remove markdown bold wrappers (**like this**) for natural UI copy. */
+/** Remove markdown bold wrappers (**like this**) — reads more natural in UI than fake emphasis. */
 export function stripMarkdownBoldMarkers(text: string): string {
   let prev = "";
   let s = text;

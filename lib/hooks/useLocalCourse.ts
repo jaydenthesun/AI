@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CoursePlan, PerformanceSnapshot, StudentProfile } from "@/data/types";
+import type { AdaptivePlanOverlay, CoursePlan, PerformanceSnapshot, StudentProfile } from "@/data/types";
 import {
   emptyPerformanceSnapshot,
-  loadCoursePlan,
+  loadAdaptiveOverlay,
+  loadDisplayCoursePlan,
   loadPerformance,
   loadProfile,
 } from "@/lib/storage";
@@ -12,19 +13,27 @@ import {
 export function useLocalCourse() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [course, setCourse] = useState<CoursePlan | null>(null);
+  const [overlay, setOverlay] = useState<AdaptivePlanOverlay | null>(null);
   const [perf, setPerf] = useState<PerformanceSnapshot>(() => emptyPerformanceSnapshot());
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     function sync() {
       setProfile(loadProfile());
-      setCourse(loadCoursePlan());
+      setCourse(loadDisplayCoursePlan());
+      setOverlay(loadAdaptiveOverlay());
       setPerf(loadPerformance());
       setReady(true);
     }
     sync();
     function onStorage(e: StorageEvent) {
-      if (e.key === "codepath_performance_v1" || e.key === "codepath_course_v1" || e.key === "codepath_profile_v1") sync();
+      if (
+        e.key === "codepath_performance_v1" ||
+        e.key === "codepath_course_v1" ||
+        e.key === "codepath_profile_v1" ||
+        e.key === "codepath_overlay_v1"
+      )
+        sync();
     }
     window.addEventListener("storage", onStorage);
     window.addEventListener("focus", sync);
@@ -36,5 +45,5 @@ export function useLocalCourse() {
     };
   }, []);
 
-  return { profile, course, perf, ready, setCourse, setPerf, setProfile };
+  return { profile, course, overlay, perf, ready, setCourse, setPerf, setProfile };
 }
