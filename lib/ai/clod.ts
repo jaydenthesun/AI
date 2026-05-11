@@ -5,7 +5,10 @@ export interface ClodMessage {
   content: string;
 }
 
-export async function clodChatCompletion(messages: ClodMessage[], options?: { temperature?: number; maxTokens?: number }) {
+export async function clodChatCompletion(
+  messages: ClodMessage[],
+  options?: { temperature?: number; maxTokens?: number },
+): Promise<string> {
   const apiKey = process.env.CLOD_API_KEY;
   const base = (process.env.CLOD_BASE_URL ?? "https://api.clod.io/v1").replace(/\/$/, "");
   const model = process.env.CLOD_MODEL ?? "DeepSeek V3";

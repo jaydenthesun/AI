@@ -48,12 +48,15 @@ export async function runTeacherScore(params: {
     { temperature: 0.35, maxTokens: 1800 },
   );
 
-  const parsed = parseJsonObject<{
-    score?: number;
-    rationale?: string;
-    strengths?: unknown;
-    gaps?: unknown;
-  }>(raw);
+  let parsed: { score?: number; rationale?: string; strengths?: unknown; gaps?: unknown };
+  try {
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    parsed = JSON.parse(start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned) as typeof parsed;
+  } catch {
+    parsed = {};
+  }
 
   const scoreNum = typeof parsed.score === "number" ? Math.round(parsed.score) : NaN;
   const score = Number.isFinite(scoreNum) ? Math.max(0, Math.min(100, scoreNum)) : 72;
