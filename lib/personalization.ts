@@ -114,7 +114,7 @@ export function inferGoalArchetype(goalsText: string): LearningGoalArchetype {
 }
 
 function interestLens(interest: InterestArea, topic: string): string {
-  const t = topic.toLowerCase();
+  switch (interest) {
   switch (interest) {
     case "games":
       return `Frame "${topic}" around player state, inventory slots, enemy waves, or animation ticks—systems players already feel.`;
