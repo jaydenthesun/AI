@@ -115,7 +115,6 @@ export function inferGoalArchetype(goalsText: string): LearningGoalArchetype {
 
 function interestLens(interest: InterestArea, topic: string): string {
   switch (interest) {
-  switch (interest) {
     case "games":
       return `Frame "${topic}" around player state, inventory slots, enemy waves, or animation ticks—systems players already feel.`;
     case "cybersecurity":
@@ -248,7 +247,7 @@ export function buildPersonalizedLessonSections(
             prompt: `Name one optimization or refactor you would postpone until after correctness locks for ${topic}.`,
           },
         ]
-      : [],
+        : [],
   };
 
   return [s1, s2, s3];
