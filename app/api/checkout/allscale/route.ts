@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const redirectUrl =
     origin.length > 0 ? `${origin}/checkout/success?course=${encodeURIComponent(course.id)}` : undefined;
 
-  const orderId = `cp_${course.slug}_${Date.now()}`.slice(0, 120);
+  const orderId = `cp_${course.slug}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`.slice(0, 120);
 
   const hasKeys = !!(process.env.ALLSCALE_API_KEY?.trim() && process.env.ALLSCALE_API_SECRET?.trim());
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       stable_coin: StableCoin.USDC,
       amount_cents: amount,
       order_id: orderId,
-  const orderId = `cp_${course.slug}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`.slice(0, 120);
+      order_description: `${course.title} — CodePath Agent specialized track`,
       redirect_url: redirectUrl,
       extra: {
         product: "codepath_specialized_course",
